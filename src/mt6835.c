@@ -284,6 +284,7 @@ uint32_t mt6835_get_raw_angle(mt6835_t *mt6835, mt6835_read_angle_method_enum_t 
             mt6835->crc_res = false;
             return 0;
         }
+        mt6835->crc_res = true;
 #endif
     }
 
