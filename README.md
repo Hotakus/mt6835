@@ -59,6 +59,7 @@ target_link_libraries(your_project mt6835)
 #### 3.1 以 STM32 为例：
 
 ```c
+#include <math.h>
 #include "mt6835.h" // MT6835 驱动头文件
 #include "spi.h"    // STM32CubeMX 生成的 SPI 头文件
 
@@ -131,6 +132,10 @@ int main(void) {
         raw_angle = mt6835_get_raw_angle(mt6835, MT6835_READ_ANGLE_METHOD_BURST);
         radian_angle = raw_angle * (M_PI * 2.0f) / MT6835_ANGLE_RESOLUTION;
         // radian_angle = mt6835_get_angle(motor1_mt6835, MT6835_READ_ANGLE_METHOD_BURST);
+        
+        if (!mt6835->crc_res) {
+            printf("crc error\n\r");
+        }
         
         printf("raw_angle: %d, radian_angle: %f\n\r", raw_angle, radian_angle);
         HAL_Delay(500);
