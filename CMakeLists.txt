@@ -1,3 +1,6 @@
+
+# this file is use to normal Cmake project
+
 cmake_minimum_required(VERSION 3.16)
 project(mt6835
         LANGUAGES C
