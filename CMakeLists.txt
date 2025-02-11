@@ -21,10 +21,12 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fdata-sections -ffunction-sections -Wall")
 # main add
 include_directories(./
                     ./src
+                    ./example/stm32/
 )
 
 file(GLOB_RECURSE SOURCES
      "./src/*.*"
+     "./example/stm32/*.*"
 )
 
 add_library(mt6835 STATIC ${SOURCES})
@@ -32,4 +34,5 @@ add_library(mt6835 STATIC ${SOURCES})
 target_include_directories(mt6835 PUBLIC
                            ${CMAKE_CURRENT_SOURCE_DIR}
                            ${CMAKE_CURRENT_SOURCE_DIR}/src/
+                           ${CMAKE_CURRENT_SOURCE_DIR}/example/stm32/
 )
