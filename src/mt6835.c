@@ -310,7 +310,7 @@ uint32_t mt6835_get_raw_angle(mt6835_t *mt6835, mt6835_read_angle_method_enum_t 
  */
 float mt6835_get_angle(mt6835_t *mt6835, mt6835_read_angle_method_enum_t method) {
     uint32_t raw_angle = mt6835_get_raw_angle(mt6835, method);
-    return (float)(raw_angle * (M_PI * 2.0f) / MT6835_ANGLE_RESOLUTION);
+    return (float)(raw_angle * 2.996056226329803e-6);
 }
 
 
