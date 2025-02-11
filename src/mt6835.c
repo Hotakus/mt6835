@@ -341,11 +341,11 @@ float mt6835_get_zero_angle(mt6835_t *mt6835) {
 /**
  * @brief set mt6835 zero angle
  * @param mt6835 mt6835 object
- * @param deg zero angle in deg
+ * @param rad zero angle in rad
  * @return true: success, false: fail
  */
-bool mt6835_set_zero_angle(mt6835_t *mt6835, float deg) {
-    uint16_t angle = (uint16_t)roundf(deg / MT6835_ZERO_REG_STEP);
+bool mt6835_set_zero_angle(mt6835_t *mt6835, float rad) {
+    uint16_t angle = (uint16_t)roundf(rad * 57.295779513f / MT6835_ZERO_REG_STEP);
     if (angle > 0xFFF) {
         return false;
     }
@@ -426,7 +426,7 @@ bool mt6835_write_eeprom(mt6835_t *mt6835) {
     mt6835->func.spi_send_recv((uint8_t *)&mt6835->data_frame.pack, (uint8_t *)&result, 3);
     mt6835->func.spi_cs_control(MT6835_CS_HIGH);
 
-    if (result[2] == 0xFF) {
+    if (result[2] == 0xFF || result[2] != 0x55) {
         return false;
     }
     return true;

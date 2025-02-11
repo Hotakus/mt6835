@@ -147,7 +147,7 @@ uint32_t mt6835_get_raw_angle(mt6835_t *mt6835, mt6835_read_angle_method_enum_t 
 uint16_t mt6835_get_raw_zero_angle(mt6835_t *mt6835);
 float mt6835_get_angle(mt6835_t *mt6835, mt6835_read_angle_method_enum_t method);
 float mt6835_get_zero_angle(mt6835_t *mt6835);
-bool mt6835_set_zero_angle(mt6835_t *mt6835, float deg);
+bool mt6835_set_zero_angle(mt6835_t *mt6835, float rad);
 
 /* mt6835 base functions */
 uint8_t mt6835_read_reg(mt6835_t *mt6835, mt6835_reg_enum_t reg);
