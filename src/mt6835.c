@@ -229,6 +229,15 @@ uint8_t mt6835_get_id(mt6835_t *mt6835) {
     return mt6835_read_reg(mt6835, MT6835_REG_ID);
 }
 
+/**
+ * @brief set mt6835 id, the id can be programmed by user
+ * @param mt6835 mt6835 object
+ * @return id
+ */
+void mt6835_set_id(mt6835_t *mt6835, uint8_t custom_id) {
+    mt6835_write_reg(mt6835, MT6835_REG_ID, custom_id);
+}
+
 
 /**
  * @brief get mt6835 raw angle

@@ -142,6 +142,7 @@ void mt6835_link_spi_send_recv(mt6835_t *mt6835, void (*spi_send_recv)(uint8_t *
 
 /* mt6835 get and set functions*/
 uint8_t mt6835_get_id(mt6835_t *mt6835);
+void mt6835_set_id(mt6835_t *mt6835, uint8_t custom_id);
 uint32_t mt6835_get_raw_angle(mt6835_t *mt6835, mt6835_read_angle_method_enum_t method);
 uint16_t mt6835_get_raw_zero_angle(mt6835_t *mt6835);
 float mt6835_get_angle(mt6835_t *mt6835, mt6835_read_angle_method_enum_t method);
