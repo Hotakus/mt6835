@@ -162,4 +162,80 @@ int main() {
 }
 ```
 
+---
+
+### 4. 更多函数说明
+
+- 创建销毁函数：
+    - `mt6835_create()` 创建一个 mt6835 对象
+    - `mt6835_destroy()` 销毁一个 mt6835 对象
+
+- 链接函数：
+    - `mt6835_link_spi_send()` 链接 SPI 发送函数
+    - `mt6835_link_spi_recv()` 链接 SPI 接收函数
+    - `mt6835_link_spi_send_recv()` 链接 SPI 收发函数
+    - `mt6835_link_spi_cs_control()` 链接 CS 引脚操作函数
+- CRC：
+    - `mt6835_enable_crc_check()` 使能 CRC 校验（查表法）
+    - `mt6835_disable_crc_check()` 失能 CRC 校验
+- GET 和 SET 函数
+    - `mt6835_get_id()` 读取 MT6835 ID 寄存器
+    - `mt6835_set_id()` 暂时写入 MT6835 ID 寄存器（配合 `mt6835_write_eeprom()` 函数）
+    - `mt6835_get_raw_angle()` 读取原始角度数据（21位）
+    - `mt6835_get_angle()` 读取原始角度数据并换算为弧度值（0 ~ 2*PI）
+    - `mt6835_get_raw_zero_angle()` 读取原始零位值（12位）（零位值在 FOC 中很重要，最好是将正确零位固化在EEPROM中）
+    - `mt6835_get_zero_angle()` 读取零位值，并换算成弧度值
+    - `mt6835_set_zero_angle()` 暂时写入零位值（以弧度）到寄存器，（配合 `mt6835_write_eeprom()` 函数）
+- 底层函数：
+    - `mt6835_read_reg()` 单字节读取寄存器
+    - `mt6835_write_reg()` 单字节暂时写入寄存器（配合 `mt6835_write_eeprom()` 函数）
+    - `mt6835_write_eeprom()` 将当前所有的可固化寄存器值写入（固化）到 EEPROM，所有写入操作最后都要额外调用这个函数
+
+---
+
+### 5. 写入 EEPROM 示例
+
+存在寄存器的值断电消失，所以只是写入寄存器并不等于固化到 EEPROM
+```c++
+int main() {
+    /* 写入 ID */
+    mt6835_set_id(mt6835, 0xDA); // 写入 ID 0xDA 到寄存器，只在寄存器，断电消失
+    HAL_Delay(1);
+    uint8_t id = mt6835_get_id(mt6835); // 读取 ID
+    printf("id: 0x%x\r\n", id);
+    
+    /* 写入特定零位值，零位值需要你自己校准并读取角度 */
+    // 2.0943951024f 是 120 度，假设 120 度是零位
+    mt6835_set_zero_angle(mt6835, 2.0943951024f); //写入到零位寄存器，断电消失
+    HAL_Delay(1);
+    float zero_angle = mt6835_get_zero_angle(mt6835); // 读取零位值
+    printf("zero_angle: %f rad\r\n", zero_angle);
+    
+    /*下面进行统一固化，为保证断电后 MT6835 数据不丢失，需要固化到 EEPROM */
+    /*
+    * 直接调用 mt6835_write_eeprom 发送固化命令，
+    * 命令成功发送则返回 0x55, 若正确收到 0x55，
+    * 则程序 respond 为 true，错误则 false
+    */
+    bool respond = mt6835_write_eeprom(mt6835);
+    if (!respond) {
+        printf("write eeprom failed\r\n");
+    } else {
+        printf("write eeprom success\r\n");
+    }
+    HAL_Delay(6000);    // 写入后至少 6 秒钟不能断电
+    
+    /* 
+     * 将上面的所有写入和固化操作注释掉，重新烧录程序，
+     * 并重新给编码器上电，进行读取验证 
+    */ 
+    id = mt6835_get_id(mt6835); // 读取 ID
+    printf("id: 0x%x\r\n", id);
+    zero_angle = mt6835_get_zero_angle(mt6835); // 读取零位值
+    printf("zero_angle: %f rad\r\n", zero_angle);
+    
+    // 若任何环节失败，请优先检测你的 SPI 初始化代码是否有问题，
+    // 因为所有代码均经过正确验证
+}
+```
 
