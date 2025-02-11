@@ -58,7 +58,7 @@ target_link_libraries(your_project mt6835)
 
 #### 3.1 以 STM32 为例：
 
-```c
+```c++
 #include <math.h>
 #include "mt6835.h" // MT6835 驱动头文件
 #include "spi.h"    // STM32CubeMX 生成的 SPI 头文件
@@ -143,13 +143,23 @@ int main(void) {
 }
 ```
 
-s  
-s  
-s  
-s  
-s  
-s  
-s  
-s  
-s  
-s  
+若不想自己实现，则直接将`example/stm32/mt6835_stm32_spi_port.h`文件中宏定义`MT6835_STM32_SPI_PORT_ENABLE`改为`1`即可：  
+然后按照如下调用：
+
+```c++
+int main() {
+    uint32_t raw_angle = 0;
+    float radian_angle = 0.0f;
+    mt6835_t * mt6835 = mt6835_stm32_spi_port_init();
+    
+    while(1) {
+        raw_angle = mt6835_get_raw_angle(mt6835, MT6835_READ_ANGLE_METHOD_BURST);
+        radian_angle = raw_angle * (M_PI * 2.0f) / MT6835_ANGLE_RESOLUTION;
+        // radian_angle = mt6835_get_angle(motor1_mt6835, MT6835_READ_ANGLE_METHOD_BURST);
+        printf("raw_angle: %d, radian_angle: %f\n\r", raw_angle, radian_angle);
+        HAL_Delay(500);
+    }
+}
+```
+
+
