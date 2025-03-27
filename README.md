@@ -1,9 +1,13 @@
 <div align="center">
 <strong>
     <h1>MT6835 Framework</h1>
-    纯C语言实现，跨平台（stm32、ESP32），移植灵活，低耦合高内聚的 <br> MT6835（21位磁编） 驱动框架
+    首发，纯C语言实现，跨平台（stm32、ESP32），移植灵活，低耦合高内聚的 <br> MT6835（21位磁编） 驱动框架  <br>
+    若您觉得不错，可以帮忙点个 Star⭐，谢谢！
 </strong>
+
 </div>
+
+[![CSDN](https://img.shields.io/badge/%E5%8D%9A%E5%AE%A2-文章-%23FF4D5B.svg?&logo=CSDN&logoColor=white)](https://blog.csdn.net/qq_26106317/article/details/145571140?fromshare=blogdetail&sharetype=blogdetail&sharerId=145571140&sharerefer=PC&sharesource=qq_26106317&sharefrom=from_link)
 
 ---
 
@@ -239,3 +243,7 @@ int main() {
 }
 ```
 
+最后附上简单的 STM32CubeMX配置图片：  
+注意另配 CS 引脚，任意引脚设置为 OUTPUT 即可
+
+![](./assets/example1.png)
