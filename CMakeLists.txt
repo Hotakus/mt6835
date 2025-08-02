@@ -6,7 +6,7 @@ project(mt6835
         LANGUAGES C
         VERSION 1.0.0.0
         DESCRIPTION "mt6835-framework"
-        HOMEPAGE_URL https://github.com/Hotakus/octo-foc
+        HOMEPAGE_URL https://github.com/Hotakus/mt6835
 )
 set(CMAKE_C_STANDARD 99)
 
