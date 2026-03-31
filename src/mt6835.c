@@ -127,7 +127,7 @@ __attribute__((weak)) void mt6835_spi_send_recv(uint8_t *tx_buf, uint8_t *rx_buf
 mt6835_t *mt6835_create() {
     mt6835_t *mt6835 = (mt6835_t *)MT6835_MALLOC(sizeof(mt6835_t));
     if (mt6835 == NULL) {
-        MT6835_DEBUG("%s malloc failed", TAG);
+        MT6835_DEBUG("[%s]""malloc failed", TAG);
         return NULL;
     }
     memset(mt6835, 0, sizeof(mt6835_t));
@@ -154,11 +154,11 @@ void mt6835_destroy(mt6835_t *mt6835) {
  */
 void mt6835_link_spi_cs_control(mt6835_t *mt6835, void (*spi_cs_control)(mt6835_cs_state_enum_t state)) {
     if (mt6835 == NULL) {
-        MT6835_DEBUG("%s mt6835 object is null", TAG);
+        MT6835_DEBUG("[%s]""mt6835 object is null", TAG);
         return;
     }
     if (spi_cs_control == NULL) {
-        MT6835_DEBUG("%s mt6835 object use default spi_cs_control(null)", TAG);
+        MT6835_DEBUG("[%s]""mt6835 object use default spi_cs_control(null)", TAG);
         mt6835->func.spi_cs_control = mt6835_cs_control;
     } else {
         mt6835->func.spi_cs_control = spi_cs_control;
@@ -173,11 +173,11 @@ void mt6835_link_spi_cs_control(mt6835_t *mt6835, void (*spi_cs_control)(mt6835_
  */
 void mt6835_link_spi_send(mt6835_t *mt6835, void (*spi_send)(uint8_t *tx_buf, uint8_t len)) {
     if (mt6835 == NULL) {
-        MT6835_DEBUG("%s mt6835 object is null", TAG);
+        MT6835_DEBUG("[%s]""mt6835 object is null", TAG);
         return;
     }
     if (spi_send == NULL) {
-        MT6835_DEBUG("%s mt6835 object use default spi_send(null)", TAG);
+        MT6835_DEBUG("[%s]""mt6835 object use default spi_send(null)", TAG);
         mt6835->func.spi_send = mt6835_spi_send;
     }
     mt6835->func.spi_send = spi_send;
@@ -191,11 +191,11 @@ void mt6835_link_spi_send(mt6835_t *mt6835, void (*spi_send)(uint8_t *tx_buf, ui
  */
 void mt6835_link_spi_recv(mt6835_t *mt6835, void (*spi_recv)(uint8_t *rx_buf, uint8_t len)) {
     if (mt6835 == NULL) {
-        MT6835_DEBUG("%s mt6835 object is null", TAG);
+        MT6835_DEBUG("[%s]""mt6835 object is null", TAG);
         return;
     }
     if (spi_recv == NULL) {
-        MT6835_DEBUG("%s mt6835 object use default spi_recv(null)", TAG);
+        MT6835_DEBUG("[%s]""mt6835 object use default spi_recv(null)", TAG);
         mt6835->func.spi_recv = mt6835_spi_recv;
     }
     mt6835->func.spi_recv = spi_recv;
@@ -209,11 +209,11 @@ void mt6835_link_spi_recv(mt6835_t *mt6835, void (*spi_recv)(uint8_t *rx_buf, ui
  */
 void mt6835_link_spi_send_recv(mt6835_t *mt6835, void (*spi_send_recv)(uint8_t *tx_buf, uint8_t *rx_buf, uint8_t len)) {
     if (mt6835 == NULL) {
-        MT6835_DEBUG("%s mt6835 object is null", TAG);
+        MT6835_DEBUG("[%s]""mt6835 object is null", TAG);
         return;
     }
     if (spi_send_recv == NULL) {
-        MT6835_DEBUG("%s mt6835 object use default spi_send_recv(null)", TAG);
+        MT6835_DEBUG("[%s]""mt6835 object use default spi_send_recv(null)", TAG);
         mt6835->func.spi_send_recv = mt6835_spi_send_recv;
     }
     mt6835->func.spi_send_recv = spi_send_recv;
