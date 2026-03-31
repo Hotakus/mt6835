@@ -20,6 +20,7 @@
 
 #define MT6835_USE_DEBUG        (1u)    // enable debug or not
 #define MT6835_USE_CRC          (1u)    // enable CRC or not
+#define MT6835_USE_DMA          (1u)    // enable DMA transmit
 #define MT6835_MALLOC(x)        malloc(x)
 #define MT6835_FREE(x)          free(x)
 
@@ -113,7 +114,22 @@ typedef struct mt6835_t {
         void (*spi_send)(uint8_t *tx_buf, uint8_t len);
         void (*spi_recv)(uint8_t *rx_buf, uint8_t len);
         void (*spi_send_recv)(uint8_t *tx_buf, uint8_t *rx_buf, uint8_t len);
+        void (*spi_dma_send_recv)(uint8_t *tx_buf, uint8_t *rx_buf, uint8_t len);
     } func;
+
+#if MT6835_USE_DMA == 1u
+    struct {
+        union {
+            uint8_t all;
+            struct {
+                uint8_t enable: 1;
+                uint8_t transmit_done: 1;
+            } flag;
+        };
+        uint8_t *tx_buf;
+        uint8_t *rx_buf;
+    } dma;
+#endif
 
     uint8_t crc;
     bool crc_res;
@@ -139,11 +155,12 @@ void mt6835_link_spi_cs_control(mt6835_t *mt6835, void (*spi_cs_control)(mt6835_
 void mt6835_link_spi_send(mt6835_t *mt6835, void (*spi_send)(uint8_t *tx_buf, uint8_t len));
 void mt6835_link_spi_recv(mt6835_t *mt6835, void (*spi_recv)(uint8_t *rx_buf, uint8_t len));
 void mt6835_link_spi_send_recv(mt6835_t *mt6835, void (*spi_send_recv)(uint8_t *tx_buf, uint8_t *rx_buf, uint8_t len));
+void mt6835_link_spi_dma_send_recv(mt6835_t *mt6835, void (*spi_dma_send_recv)(uint8_t *tx_buf, uint8_t *rx_buf, uint8_t len));
 
 /* mt6835 get and set functions*/
 uint8_t mt6835_get_id(mt6835_t *mt6835);
 void mt6835_set_id(mt6835_t *mt6835, uint8_t custom_id);
-uint32_t mt6835_get_raw_angle(mt6835_t *mt6835, mt6835_read_angle_method_enum_t method);
+void mt6835_get_raw_angle(mt6835_t *mt6835, mt6835_read_angle_method_enum_t method);
 uint16_t mt6835_get_raw_zero_angle(mt6835_t *mt6835);
 float mt6835_get_angle(mt6835_t *mt6835, mt6835_read_angle_method_enum_t method);
 float mt6835_get_zero_angle(mt6835_t *mt6835);
@@ -153,6 +170,13 @@ bool mt6835_set_zero_angle(mt6835_t *mt6835, float rad);
 uint8_t mt6835_read_reg(mt6835_t *mt6835, mt6835_reg_enum_t reg);
 void mt6835_write_reg(mt6835_t *mt6835, mt6835_reg_enum_t reg, uint8_t data);
 bool mt6835_write_eeprom(mt6835_t *mt6835);
+
+#if MT6835_USE_DMA == 1u
+void mt6835_dma_transmit_done(mt6835_t *mt6835);
+void mt6835_dma_transmit_reset(mt6835_t *mt6835);
+void mt6835_enable_dma(mt6835_t *mt6835);
+void mt6835_disable_dma(mt6835_t *mt6835);
+#endif
 
 
 #ifdef __cplusplus

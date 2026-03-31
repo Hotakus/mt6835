@@ -121,6 +121,19 @@ __attribute__((weak)) void mt6835_spi_send_recv(uint8_t *tx_buf, uint8_t *rx_buf
 
 
 /**
+ * @brief spi send and receive dma, this function is weak, you can override it
+ * @param tx_buf tx buffer
+ * @param rx_buf rx buffer
+ * @param len length
+ */
+__attribute__((weak)) void mt6835_spi_dma_send_recv(uint8_t *tx_buf, uint8_t *rx_buf, uint8_t len) {
+    (void)tx_buf;
+    (void)rx_buf;
+    (void)len;
+}
+
+
+/**
  * @brief create a mt6835 object
  * @return mt6835 object
  */
@@ -132,6 +145,12 @@ mt6835_t *mt6835_create() {
     }
     memset(mt6835, 0, sizeof(mt6835_t));
     mt6835->crc_check = false;
+#if MT6835_USE_DMA == 1u
+    mt6835->dma.flag.enable = false;
+    mt6835->dma.flag.transmit_done = true;
+    mt6835->dma.tx_buf = MT6835_MALLOC(sizeof(uint8_t) * 6);
+    mt6835->dma.rx_buf = MT6835_MALLOC(sizeof(uint8_t) * 6);
+#endif
     return mt6835;
 }
 
@@ -142,6 +161,10 @@ mt6835_t *mt6835_create() {
  */
 void mt6835_destroy(mt6835_t *mt6835) {
     if (mt6835 != NULL) {
+#if MT6835_USE_DMA == 1u
+        MT6835_FREE(mt6835->dma.tx_buf);
+        MT6835_FREE(mt6835->dma.rx_buf);
+#endif
         MT6835_FREE(mt6835);
     }
 }
@@ -221,6 +244,24 @@ void mt6835_link_spi_send_recv(mt6835_t *mt6835, void (*spi_send_recv)(uint8_t *
 
 
 /**
+ * @brief link spi send and receive dma function to mt6835 object
+ * @param mt6835 mt6835 object
+ * @param spi_dma_send_recv spi send and receive function
+ */
+void mt6835_link_spi_dma_send_recv(mt6835_t *mt6835, void (*spi_dma_send_recv)(uint8_t *tx_buf, uint8_t *rx_buf, uint8_t len)) {
+    if (mt6835 == NULL) {
+        MT6835_DEBUG("[%s]""mt6835 object is null", TAG);
+        return;
+    }
+    if (spi_dma_send_recv == NULL) {
+        MT6835_DEBUG("[%s]""mt6835 object use default spi_dma_send_recv(null)", TAG);
+        mt6835->func.spi_dma_send_recv = mt6835_spi_dma_send_recv;
+    }
+    mt6835->func.spi_dma_send_recv = spi_dma_send_recv;
+}
+
+
+/**
  * @brief get mt6835 id, the id can be programmed by user
  * @param mt6835 mt6835 object
  * @return id
@@ -239,16 +280,64 @@ void mt6835_set_id(mt6835_t *mt6835, uint8_t custom_id) {
 }
 
 
+static void _mt6835_tx_done(mt6835_t *mt6835
+#if MT6835_USE_DMA == 0
+, uint8_t *rx_buf
+#endif
+) {
+#if MT6835_USE_DMA == 1
+    uint8_t *rx_buf = mt6835->dma.rx_buf;
+#endif
+    mt6835->func.spi_cs_control(MT6835_CS_HIGH);
+
+    memmove(rx_buf, &rx_buf[2], 3);
+    if (mt6835->crc_check) {
+        rx_buf[3] = rx_buf[5];
+    }
+}
+
+
+static void _mt6835_data_check(mt6835_t *mt6835
+#if MT6835_USE_DMA == 0
+, uint8_t *rx_buf
+#endif
+) {
+#if MT6835_USE_DMA == 1
+    uint8_t *rx_buf = mt6835->dma.rx_buf;
+#endif
+    if (mt6835->crc_check) {
+        mt6835->crc = rx_buf[3];
+#if MT6835_USE_CRC == 1
+        if (crc_table(rx_buf, 3) != rx_buf[3]) {
+#if MT6835_USE_DMA == 0
+            MT6835_DEBUG("[%s]""crc check failed\r\n", TAG);
+#endif
+            mt6835->crc_res = false;
+            return;
+        }
+        mt6835->crc_res = true;
+#endif
+    }
+
+    mt6835->state = rx_buf[2] & 0x07;
+    mt6835->raw_angle = (rx_buf[0] << 13) | (rx_buf[1] << 5) | (rx_buf[2] >> 3);
+}
+
+
 /**
  * @brief get mt6835 raw angle
  * @param mt6835 mt6835 object
  * @param method read angle method, MT6835_READ_ANGLE_METHOD_NORMAL or MT6835_READ_ANGLE_METHOD_BURST
  * @return raw angle data in raw
  */
-uint32_t mt6835_get_raw_angle(mt6835_t *mt6835, mt6835_read_angle_method_enum_t method) {
+void mt6835_get_raw_angle(mt6835_t *mt6835, mt6835_read_angle_method_enum_t method) {
+#if MT6835_USE_DMA == 1u
+    uint8_t *rx_buf = mt6835->dma.rx_buf;
+    uint8_t *tx_buf = mt6835->dma.tx_buf;
+#else
     uint8_t rx_buf[6] = {0};
     uint8_t tx_buf[6] = {0};
-
+#endif
     switch (method) {
         case MT6835_READ_ANGLE_METHOD_NORMAL: {
             rx_buf[0] = mt6835_read_reg(mt6835, MT6835_REG_ANGLE3);
@@ -261,44 +350,54 @@ uint32_t mt6835_get_raw_angle(mt6835_t *mt6835, mt6835_read_angle_method_enum_t 
         }
         case MT6835_READ_ANGLE_METHOD_BURST: {
             const uint8_t rd = mt6835->crc_check ? 6 : 5;
+#if MT6835_USE_DMA == 1u
+            if (mt6835->dma.flag.transmit_done) {
+#endif
+                mt6835->func.spi_cs_control(MT6835_CS_HIGH);
+                mt6835->data_frame.cmd = MT6835_CMD_BURST;
+                mt6835->data_frame.reg = MT6835_REG_ANGLE3;
+                tx_buf[0] = mt6835->data_frame.pack & 0xFF;
+                tx_buf[1] = (mt6835->data_frame.pack >> 8) & 0xFF;
 
-            mt6835->func.spi_cs_control(MT6835_CS_HIGH);
-            mt6835->data_frame.cmd = MT6835_CMD_BURST;
-            mt6835->data_frame.reg = MT6835_REG_ANGLE3;
-            tx_buf[0] = mt6835->data_frame.pack & 0xFF;
-            tx_buf[1] = (mt6835->data_frame.pack >> 8) & 0xFF;
+                mt6835->func.spi_cs_control(MT6835_CS_LOW);
+                if (mt6835->func.spi_send_recv) {
+#if MT6835_USE_DMA == 1u
+                    if (mt6835->dma.flag.enable) {
+                        mt6835->func.spi_dma_send_recv(tx_buf, rx_buf, rd);
+                        mt6835->dma.flag.transmit_done = false;
+                    } else {
+#endif
+                        mt6835->func.spi_send_recv(tx_buf, rx_buf, rd);
+#if MT6835_USE_DMA == 1u
+                    }
+#endif
+                } else {
+                    // mt6835->func.spi_send(tx_buf, rd);
+                    // mt6835->func.spi_recv(rx_buf, rd);
+                    MT6835_DEBUG("[%s]""spi_send and spi_recv are Deprecated. please implement spi_send_recv.\n", TAG);
+                }
+#if MT6835_USE_DMA == 1u
+                if (mt6835->dma.flag.enable == false) {
+                    _mt6835_tx_done(mt6835);
+                }
+#else
+                _mt6835_tx_done(mt6835, rx_buf);
+#endif
 
-            mt6835->func.spi_cs_control(MT6835_CS_LOW);
-            if (mt6835->func.spi_send_recv) {
-                mt6835->func.spi_send_recv(tx_buf, rx_buf, rd);
-            } else {
-                mt6835->func.spi_send(tx_buf, rd);
-                mt6835->func.spi_recv(rx_buf, rd);
+#if MT6835_USE_DMA == 1u
             }
-            mt6835->func.spi_cs_control(MT6835_CS_HIGH);
+#endif
 
-            memmove(rx_buf, &rx_buf[2], 3);
-            if (mt6835->crc_check) {
-                rx_buf[3] = rx_buf[5];
-            }
             break;
         }
     }
-
-    if (mt6835->crc_check) {
-        mt6835->crc = rx_buf[3];
-#if MT6835_USE_CRC == 1
-        if (crc_table(rx_buf, 3) != rx_buf[3]) {
-            MT6835_DEBUG("%s crc check failed\r\n", TAG);
-            mt6835->crc_res = false;
-            return 0;
-        }
-        mt6835->crc_res = true;
-#endif
+#if MT6835_USE_DMA == 1u
+    if (mt6835->dma.flag.enable == false) {
+        _mt6835_data_check(mt6835);
     }
-
-    mt6835->state = rx_buf[2] & 0x07;
-    return (rx_buf[0] << 13) | (rx_buf[1] << 5) | (rx_buf[2] >> 3);
+#else
+    _mt6835_data_check(mt6835, rx_buf);
+#endif
 }
 
 
@@ -309,8 +408,8 @@ uint32_t mt6835_get_raw_angle(mt6835_t *mt6835, mt6835_read_angle_method_enum_t 
  * @return angle data in rad
  */
 float mt6835_get_angle(mt6835_t *mt6835, mt6835_read_angle_method_enum_t method) {
-    uint32_t raw_angle = mt6835_get_raw_angle(mt6835, method);
-    return (float)(raw_angle * 2.996056226329803e-6);
+    mt6835_get_raw_angle(mt6835, method);
+    return (float)(mt6835->raw_angle * 2.9960562263391430267906188964844e-6);
 }
 
 
@@ -431,3 +530,28 @@ bool mt6835_write_eeprom(mt6835_t *mt6835) {
     }
     return true;
 }
+
+#if MT6835_USE_DMA == 1u
+void mt6835_dma_transmit_done(mt6835_t *mt6835) {
+    mt6835->dma.flag.transmit_done = true;
+    _mt6835_tx_done(mt6835);
+    _mt6835_data_check(mt6835);
+}
+
+void mt6835_dma_transmit_reset(mt6835_t *mt6835) {
+    mt6835->dma.flag.transmit_done = false;
+}
+
+void mt6835_enable_dma(mt6835_t *mt6835) {
+    if (!mt6835->func.spi_dma_send_recv) {
+        MT6835_DEBUG("\n\r[%s]""Please implement spi_send_recv before enable DMA.\n\r", TAG);
+        mt6835->dma.flag.enable = false;
+    } else {
+        mt6835->dma.flag.enable = true;
+    }
+}
+
+void mt6835_disable_dma(mt6835_t *mt6835) {
+    mt6835->dma.flag.enable = true;
+}
+#endif
