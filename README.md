@@ -54,7 +54,7 @@ target_link_libraries(your_project mt6835)
 程序预留硬件抽象层 API 给用户对接，对于 MT6835，采用 SPI 全双工通信，可以读出21位的角度原始数据，请确保以下：
 
 - 提前配置好 SPI 全双工通信（例如 STM32 可以使用 STM32CubeMX 配置 SPI1 ）
-- SPI 时钟理论不超过 16MHz，
+- SPI 时钟理论不超过 16MHz，如果超过这个值，速度反而会变慢
 - CPOL(1), CPHA(1)，8bit 数据模式，
 - 软 CS，提前配置好一根 CS 引脚，默认拉高
 
@@ -84,21 +84,25 @@ static void mt6835_cs_control(mt6835_cs_state_enum_t state) {
 
 // 示例收发函数，可以根据需要进行修改
 static void mt6835_spi_send_recv(uint8_t *tx_buf, uint8_t *rx_buf, uint8_t len) {
-    HAL_StatusTypeDef status = HAL_OK;
-    status = HAL_SPI_TransmitReceive_IT(&SPI_INSTANCE, tx_buf, rx_buf, len);
-    if (status != HAL_OK) {
-        printf("spi send_recv failed %d\n\r", status);
-        return;
-    }
-    // wait IT
-    uint32_t tickstart = HAL_GetTick();
-    while (HAL_SPI_GetState(&SPI_INSTANCE) != HAL_SPI_STATE_READY) {
-        if (HAL_GetTick() - tickstart > 1) {
-            printf("spi send_recv timeout\n\r");
-            return;
-        }
+    HAL_SPI_TransmitReceive(&SPI_INSTANCE, tx_buf, rx_buf, len, 1000);
+}
+
+// 如果 MT6835_USE_DMA 为 1，则开启 DMA 支持（仅支持 BURST 模式的数据传输）
+#if MT6835_USE_DMA == 1
+static void mt6835_spi_dma_send_recv(uint8_t *tx_buf, uint8_t *rx_buf, uint8_t len) {
+    HAL_SPI_TransmitReceive_DMA(&SPI_INSTANCE, tx_buf, rx_buf, len);
+}
+
+// 如果开启 DMA 支持，你需要加入下面的回调函数
+void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi) {
+    if (hspi->Instance == SPI1)
+    {
+#if MT6835_USE_DMA == 1
+        mt6835_dma_transmit_done(mt6835); // 内建函数，必须调用
+#endif
     }
 }
+#endif
 
 int main(void) { 
     /* STM32CubeMX 生成的初始化 */
@@ -113,6 +117,12 @@ int main(void) {
     /* 链接 SPI 收发函数 */
     mt6835_link_spi_send_recv(mt6835, mt6835_spi_send_recv);
     
+#if MT6835_USE_DMA == 1
+    /* 链接 SPI DMA 收发函数 */
+    mt6835_link_spi_dma_send_recv(mt6835, mt6835_spi_dma_send_recv);
+    mt6835_enable_dma(mt6835); // 你需要使用该函数启用 DMA 支持
+#endif
+    
     /* 可选 */
     // mt6835_link_spi_send(mt6835, mt6835_spi_send);
     // mt6835_link_spi_recv(mt6835, mt6835_spi_recv);
@@ -125,23 +135,22 @@ int main(void) {
     // mt6835_disable_crc_check(mt6835);    // 禁用 CRC 校验
     
     /* 开始读取角度 */
-    uint32_t raw_angle = 0;
     float radian_angle = 0.0f;
     while(1) {
         /* 
         * 读取原始角度数据
         * 第二个参数为读取方式, MT6835_READ_ANGLE_METHOD_NORMAL 或 MT6835_READ_ANGLE_METHOD_BURST 
-        * MT6835_READ_ANGLE_METHOD_BURST 会更快
+        * MT6835_READ_ANGLE_METHOD_BURST 会更快 （该模式支持 DMA ）
         */
-        raw_angle = mt6835_get_raw_angle(mt6835, MT6835_READ_ANGLE_METHOD_BURST);
-        radian_angle = raw_angle * (M_PI * 2.0f) / MT6835_ANGLE_RESOLUTION;
-        // radian_angle = mt6835_get_angle(motor1_mt6835, MT6835_READ_ANGLE_METHOD_BURST);
+        mt6835_get_raw_angle(mt6835, MT6835_READ_ANGLE_METHOD_BURST);
+        radian_angle = mt6835->raw_angle * (M_PI * 2.0f) / MT6835_ANGLE_RESOLUTION;
+        // 或更快的 radian_angle = mt6835_get_angle(mt6835, MT6835_READ_ANGLE_METHOD_BURST);
         
         if (!mt6835->crc_res) {
             printf("crc error\n\r");
         }
         
-        printf("raw_angle: %d, radian_angle: %f\n\r", raw_angle, radian_angle);
+        printf("raw_angle: %d, radian_angle: %f\n\r", mt6835->raw_angle, radian_angle);
         HAL_Delay(500);
     }
 }
@@ -152,15 +161,14 @@ int main(void) {
 
 ```c++
 int main() {
-    uint32_t raw_angle = 0;
     float radian_angle = 0.0f;
     mt6835_t * mt6835 = mt6835_stm32_spi_port_init();
     
     while(1) {
-        raw_angle = mt6835_get_raw_angle(mt6835, MT6835_READ_ANGLE_METHOD_BURST);
-        radian_angle = raw_angle * (M_PI * 2.0f) / MT6835_ANGLE_RESOLUTION;
-        // radian_angle = mt6835_get_angle(motor1_mt6835, MT6835_READ_ANGLE_METHOD_BURST);
-        printf("raw_angle: %d, radian_angle: %f\n\r", raw_angle, radian_angle);
+        mt6835_get_raw_angle(mt6835, MT6835_READ_ANGLE_METHOD_BURST);
+        radian_angle = mt6835->raw_angle * (M_PI * 2.0f) / MT6835_ANGLE_RESOLUTION;
+        // 或更快的 radian_angle = mt6835_get_angle(motor1_mt6835, MT6835_READ_ANGLE_METHOD_BURST);
+        printf("raw_angle: %d, radian_angle: %f\n\r", mt6835->raw_angle, radian_angle);
         HAL_Delay(500);
     }
 }
@@ -244,6 +252,10 @@ int main() {
 ```
 
 最后附上简单的 STM32CubeMX配置图片：  
-注意另配 CS 引脚，任意引脚设置为 OUTPUT 即可
+注意另配 CS 引脚，任意引脚设置为 OUTPUT 即可 ⬇️
 
 ![](./assets/example1.png)
+
+如果需要 DMA ⬇️
+
+![](./assets/DMA.png)
