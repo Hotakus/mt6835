@@ -37,6 +37,7 @@ static void mt6835_spi_send_recv(uint8_t *tx_buf, uint8_t *rx_buf, uint8_t len) 
     HAL_SPI_TransmitReceive(&SPI_INSTANCE, tx_buf, rx_buf, len, 1000);
 }
 
+#if MT6835_USE_DMA == 1
 static void mt6835_spi_dma_send_recv(uint8_t *tx_buf, uint8_t *rx_buf, uint8_t len) {
     HAL_SPI_TransmitReceive_DMA(&SPI_INSTANCE, tx_buf, rx_buf, len);
 }
@@ -49,6 +50,7 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi) {
 #endif
     }
 }
+#endif
 
 #endif
 
@@ -63,8 +65,9 @@ mt6835_t *mt6835_stm32_spi_port_init(void) {
     // HAL_Delay(2000);
     mt6835_link_spi_cs_control(mt6835, mt6835_cs_control);
     mt6835_link_spi_send_recv(mt6835, mt6835_spi_send_recv);
+#if MT6835_USE_DMA == 1
     mt6835_link_spi_dma_send_recv(mt6835, mt6835_spi_dma_send_recv);
-
+#endif
     return mt6835;
 #else
     return NULL;
