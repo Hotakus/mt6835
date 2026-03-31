@@ -4,7 +4,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(mt6835
         LANGUAGES C
-        VERSION 1.0.0.0
+        VERSION 2.1.0.0
         DESCRIPTION "mt6835-framework"
         HOMEPAGE_URL https://github.com/Hotakus/mt6835
 )
