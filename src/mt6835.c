@@ -409,7 +409,7 @@ void mt6835_get_raw_angle(mt6835_t *mt6835, mt6835_read_angle_method_enum_t meth
  */
 float mt6835_get_angle(mt6835_t *mt6835, mt6835_read_angle_method_enum_t method) {
     mt6835_get_raw_angle(mt6835, method);
-    return (float)(mt6835->raw_angle * 2.9960562263391430267906188964844e-6);
+    return (float)(mt6835->raw_angle * 2.9960562263391430267906188964844e-6f);
 }
 
 
