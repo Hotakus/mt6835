@@ -2,7 +2,7 @@
 #define INCLUDE_GUARD
 
 #define MT6835_NAME "mt6835"
-#define MT6835_VER  "1.1.0.0"
+#define MT6835_VER  "2.1.0.0"
 #define MT6835_VER_MAJOR "2"
 #define MT6835_VER_MINOR "1"
 #define MT6835_VER_PATCH "0"
